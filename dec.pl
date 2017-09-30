@@ -42,20 +42,30 @@ sub expand_operator {
 
 sub replace_operators {
 	my $s = shift;
-	$s =~ s/$_->{find}/$_->{replace}->()/eg for @regexs;
-	expand_operator(\$s, '=>', '||', '!(', ')', '(', ')');
-	expand_operator(\$s, '=', '==', '(', ')', '(', ')');
-	$s;
+	$$s =~ s/$_->{find}/$_->{replace}->()/eg for @regexs;
+	expand_operator($s, '=>', '||', '!(', ')', '(', ')');
+	expand_operator($s, '=', '==', '(', ')', '(', ')');
 }
 
 sub truth_table {
-	my ($s, %seen, @vars) = shift;
+	my ($s, %seen, @vars,, $counter) = shift;
+	chomp $s;
 	$seen{$_} //= do { push @vars, $_; 1 } for $s =~ /\w+/g;
-	#print "\n\t", join "\t", @vars, $str, "\n\n";
+
+	print 'x'.++$counter."\t =\t $_\n" for @vars;
+	print "f\t =\t $s\n\n"; $counter = 0;
+	print 'x'.++$counter."\t" for @vars;
+	print "f\n"; 
+
 	@vars = map("\$$_", @vars);
 	$s =~ s/(\w+)/\$$1/g;
-	replace_operators $s;
+	replace_operators \$s;
+	$s = "print(".join(',"\t",', map("($_ ? '1' : '0')", @vars, $s)).',"\n")';
+	$s = "for my $_ (0, 1) { $s }" for reverse @vars;
+	
+	eval 'print \'====\' x scalar @vars; print "=\n";'.$s.'print \'====\' x scalar @vars; print "=\n\n";';
+	
 }
 
 print "Perl $^V\n\n";
-print truth_table $_ for <>;
+truth_table $_ for <>;
